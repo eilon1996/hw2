@@ -1,6 +1,11 @@
+// Eilon Toledano 206903445
+// Noam Akun 206784845
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#define isInit if(invFileName[0] == '\0'){printf("inventory not initialized yet. Initialize before choosing any other option.\n"); continue;}
 
 typedef struct buyInfo
 {
@@ -30,81 +35,20 @@ typedef struct chemTree
     chemNode *root;
 } chemTree;
 
-/*
- ***file types***
 
-1) Inventory files. For each chemical:
-    Chemical name: Up to 40 characters.
-    Chemical code: Up to 20 characters.
-    Quantity in storage: Up to 9 digits.
 
-    Examples:
-    Ammonia NH3 1500
-    Dihydrogen-Monoxide v=yi3erdgVVTw 600000
-
-2) Sales files. Every sale file contains the following fields:
-    Chemical code: Up to 20 characters.
-    Quantity in storage: Up to 9 digits.
-    Selling price: Up to 9 digits.
-
-    Examples:
-    C3H8 55000 70000
-    NH3 1500 1200
-
-3) Error files to record failed transactions:
-    Chemical code: Up to 20 characters.
-    Name of sales representative responsible: Up to 20 characters
-    Quantity in failed sale: Up to 9 digits.
-
-    Examples:
-    C3H8 Jack_Black 200000000
-    NH3 John_Green 1000
- */
 
 //P1
 void initInventory(char *invFileName, double bal, chemTree *invTree);
 FILE *initErr(char *errFileName, FILE *currErr);
 
+// void buildBST(chemNode *root , invInfo *newChem);
+invInfo * buildBST(chemNode *root , invInfo *newChem);
+void destroyT(chemNode *root);
+
+
 //P2
 int saveInventory(char *invFileName, char *errFileName, chemTree *currInv, FILE *currErr);
-
-//P3
-void makeSale(char *saleFileName, chemTree *currInv, FILE *currErr);
-/*
- The function receives as input aguments:
-saleFileName : The name of a file containing a sale by one of the company's sales representatives.
-currInv: A pointer to the tree containing the company's current inventory status and balance.
-currErr: A file pointer to an open file (opened in append mode) containing reports of errors.
-
-The function should do the following:
-Open the file of name in saleFileName for reading and write the updated inventory after the sale into currInv.
-For each item that is in the inventory in sufficient amount,
-the function will update the amount of the item that remains in the currInv tree,
-deleting its node if necessary. When the function terminates,
-the balance should be updated (currInv bal) according to the sales carried out.
-For each item contained in the sale that is either not in inventory is in inventory in a quantity
-not sufficient to satisfy the sale (meaning, there isn't enough of it),
-the sale of that item (in that line alone) is not carried out and an appropriate error in sale line is written to the error file.
-Writing into the error file is to be done in lexicographic order sorted by chemical code.
- */
-
-//P4
-void makePurchase(struct buyInfo *buy, chemTree *currInv);
-/*
- The function receives as input arguments:
-buy : The details of a purchase done by the company.
-currInv: A pointer to the tree containing the company's current inventory status and balance.
-
-The function should do the following:
-Search for the chemical in buy in the inventory tree currInv.
-If found add the amount purchased to the quantity field in the appropriate node in the tree.
-If not found insert a new node into the search tree for the chemical purchased, and fill its fields according to the information in buyFileName. The tree must remain a search tree sorted by chemical code
-In either case, the balance should be updated (through currInv->balance) according to the purchase carried out (i.e. the cost of the purchased should be subtracted from the balance).
-
- */
-
-
-
 
 void test2();
 void invInfoToFile(invInfo data, FILE *invFile);
@@ -114,99 +58,197 @@ chemNode * getExampleTreeNode();
 chemNode * createNode(invInfo data);
 
 
+//P3
+void makeSale(char *saleFileName, chemTree *currInv, FILE *currErr);
+
 void test3();
 chemNode * findInTree(chemNode *head, char * code);
 
 
+//P4
+void makePurchase(buyInfo *buy , chemTree *currInv);
+
+
+//P Menu
+void testMenu();
+void printMenu(chemTree * cT);
+
+void scani(int * d);
+void scand(double * d);
+void manegeMenu();
+
+
 int main() {
-    printf("Hello, World!\n");
-    test3();
+    testMenu();
     return 0;
 }
 
-//P3
+void testMenu(){
 
-void test3() {
-    printf("*** test3 ***\n");
+    printf("*** test menu ***\n");
 
-    printf("      -> findInTree:\n");
-    chemTree *invTree = getExampleTree();
-    if(strcmp(findInTree(invTree->root, "chem_code1")->data.chem_code, "chem_code1")) printf("              -> error line 1");
-    if(strcmp(findInTree(invTree->root, "chem_code6")->data.chem_code, "chem_code6")) printf("              -> error line 2");
-    if(strcmp(findInTree(invTree->root, "chem_code8")->data.chem_code, "chem_code8")) printf("              -> error line 3");
-    if(findInTree(invTree->root, "chem_code10") != NULL) printf("              -> error line 4");
-    if(findInTree(invTree->root, "chem_codd6") != NULL) printf("              -> error line 5");
-    printf("         done\n");
-
-
-    printf("      -> makeSale:\n");
-    chemTree *currInv = getExampleTree();
-    char *currErrFileName = "test3-makeSale-currErr";
-    FILE * currErr = fopen(currErrFileName , "w");
-    char * err = "C3H8 name1 2000\n"
-                 "NH3 name2 1000\n";
-    fputs(err, currErr);
-    fclose(currErr);
-    currErr = fopen(currErrFileName , "a");
-
-    char *saleFileName = "test3-makeSale-sale";
-    FILE * saleFile = fopen(saleFileName , "w");
-    char * sale = "C3H8 2000 2000\n"       // not existing codes
-                  "NH3 1000 1000\n"
-                  "chem_code1 1000 1000\n" // too much qun'
-                  "chem_code5 1000 1000\n"
-                  "chem_code2 200 1000\n" // good examples
-                  "chem_code6 100 1000\n";
-    fputs(sale, saleFile);
-    fclose(saleFile);
-
-    makeSale(saleFileName, currInv, currErr);
-    fclose(currErr);
-    if(findInTree(currInv->root, "chem_code2")->data.quantity != 0)  printf("              -> error update tree1");
-    if(findInTree(currInv->root, "chem_code6")->data.quantity != 600-100)  printf("              -> error update tree2");
-
-    printf("         done\n");
+    printf("      -> manegeMenu: \n");
+    manegeMenu();
 }
 
-chemNode * findInTree(chemNode *head, char * code){
-    if(head == NULL)
-        return NULL;
-    if(strcmp(head->data.chem_code, code) == 0)
-        return head;
-    if(strcmp(head->data.chem_code, code) > 0)
-        return findInTree(head -> left, code);
-    else
-        return findInTree(head -> right, code);
+//MENU
+void printMenu(chemTree * cT){
+    double bal = 0;
+    if(cT != NULL)
+        bal = cT->balance;
+    printf("Welcome to Chem-R-Us LTD database. Current company balance is %f.\n"
+           "Please select an option from the following menu.\n"
+           "1) Initialize company inventory and error report files.\n"
+           "2) Save current Inventory and error status to files.\n"
+           "3) Record a sale.\n"
+           "4) Record a purchase.\n\n", bal);
 }
 
-
-void makeSale(char *saleFileName, chemTree *currInv, FILE *currErr){
-    FILE * saleFile = fopen(saleFileName , "r+");
-    char chemCode[21], garbage[41];
-    long quantity, price;
-    chemNode * invHead = currInv->root;
-    chemNode * wantedNode;
-
-    while (fscanf(saleFile , "%s" , chemCode) != EOF) {  // remove name
-        fscanf(saleFile, " %ld", &quantity);
-        fscanf(saleFile, " %ld", &price);
-
-        wantedNode = findInTree(invHead, chemCode);
-        if(wantedNode == NULL || wantedNode->data.quantity < quantity){
-            // add err
-            fputs(chemCode, currErr);
-            fputs(" ", currErr);
-            fputs("name", currErr);     // ??? where do I get the name from ???
-            fprintf(currErr, " %d\n", quantity);
-        } else {
-            wantedNode->data.quantity -= quantity;
-            currInv->balance += price*quantity;
-        }
-
+void scans(char * str){
+    fscanf(stdin, "%[^\n]%*c", str);
+}
+void scand(double * d){
+    while(! fscanf(stdin, "%lf", d)) {
+        printf("Error in floating point number input. Try again: ");
+        fscanf(stdin, "%*[^\n]%*c");
     }
-
-    fclose(saleFile);
+    while (getchar() != '\n');
 }
+void scani(int * d){
+    while(! fscanf(stdin, "%d", d)) {
+        printf("Error in floating point number input. Try again: ");
+        fscanf(stdin, "%*[^\n]%*c");
+    }
+    while (getchar() != '\n');
+}
+
+void manegeMenu() {
+    // Command not recognized. Try again.
+
+    char input[201], invFileName[201] = {'\0'}, errFileName[201], saleFileName[201], c[201];
+    double balance;
+    FILE *invFile = NULL, *errFile = NULL;
+    chemTree *invTree = malloc(sizeof(chemTree));
+    invTree->root = NULL;
+    invTree->balance = 0;
+    buyInfo *buy = malloc(sizeof(buyInfo));
+    while (1) {
+        printMenu(invTree);
+
+        scans(input);  // scans all the input and remove the \n in the end
+        // c[0] = getchar();
+        if (!strcmp(input, "0")) {
+            return;
+        } else if (!strcmp(input, "1")) {
+            printf("Please enter inventory file name: ");
+            scans(invFileName);
+            printf("Please enter balance value: ");
+            scand(&balance);
+
+
+            printf("Please enter error file name: ");
+            scans(errFileName);
+
+            initInventory(invFileName, balance, invTree);
+            errFile = initErr(errFileName, errFile);
+
+            // TODO do the rest of the cases
+        } else if (!strcmp(input, "2")) {
+            isInit
+
+            printf("Please enter inventory file name: ");
+            scans(invFileName);
+            printf("Please enter error file name: ");
+            scans(errFileName);
+            int res = saveInventory(invFileName, errFileName, invTree, errFile);
+
+        } else if (!strcmp(input, "3")) {
+            isInit
+
+            printf("Please enter name of sale file:");
+            scans(saleFileName);
+            makeSale(saleFileName, invTree, errFile);
+
+        } else if (!strcmp(input, "4")) {
+            isInit
+            // set buy
+            printf("Please insert chemical name:");
+            scans(buy->chem_name);
+            printf("Please insert chemical code:");
+            scans(buy->chem_code);
+            printf("Please insert chemical quantity:");
+            scani(&buy->quantity);
+            printf("Please insert chemical cost:");
+            scand(&buy->cost);
+
+            makePurchase(buy , invTree);
+        } else {
+            printf("Command not recognized. Try again.\n");
+        }
+    }
+}
+
+//P1
+void destroyT(chemNode *root){ //page 45 //postorder
+    if (root != NULL) {
+        destroyT(root -> left);
+        destroyT(root -> right);
+        free(root);
+    }
+}
+
+void insert(chemNode ** root , invInfo *newChem)
+{
+    if (*root == NULL)
+        *root = createNode(*newChem);
+    else if (strcmp((*root) -> data .chem_code , newChem -> chem_code) > 0)
+        insert(&(*root)->left, newChem);
+    else
+        insert(&(*root)->right, newChem);
+}
+
+invInfo * buildBST(chemNode *root , invInfo *newChem){
+
+    if(root == NULL)
+        return createNode(*newChem);
+    if(strcmp(root -> data .chem_code , newChem -> chem_code) > 0)
+        root -> left = buildBST(root -> left , newChem);
+    else if(strcmp(root -> data .chem_code , newChem -> chem_code) < 0)
+        root -> right = buildBST(root -> right , newChem);
+    return root;
+}
+
+void initInventory(char *invFileName, double bal, chemTree *invTree){
+    char nName [41] , nCode [21];
+    long nQuantity;
+    invInfo *newChem;
+
+    // init of invTree
+    destroyT(invTree->root);
+    invTree->root = NULL;
+    invTree -> balance = bal;
+
+    FILE *invFile = fopen(invFileName, "r"); // Opens the file and sets a pointer named invFile
+    if(invFile == NULL)
+        printf("Error in openning inventory file. Inventory tree initialized as empty.\n");
+    while (fscanf(invFile , "%s" , nName) != EOF){
+        strcpy(newChem -> chem_name , nName);
+        fscanf(invFile , "%s" , nCode);
+        strcpy(newChem -> chem_code , nCode);
+        fscanf(invFile , "%ld" , &nQuantity);
+        newChem -> quantity = nQuantity;
+        invTree -> root = buildBST(invTree -> root , newChem);
+    }
+    fclose(invFile);
+}
+
+FILE *initErr(char *errFileName, FILE *currErr){
+    if(currErr != NULL)
+        fclose(currErr);
+    FILE *oFile = fopen(errFileName, "a");
+    return oFile;
+}
+
 
 //P2
 
@@ -299,13 +341,8 @@ int saveInventory(char *invFileName, char *errFileName, chemTree *currInv, FILE 
     // open invFileName and errFileName
     FILE * invFile = fopen(invFileName , "a+");
     FILE * errFile = fopen(errFileName , "a+");
-    if (invFile == NULL) {
-        fprintf(stderr, "Can't open invFile fil %s!\n", invFileName);
-        exit(1);
-    }
-    if (errFile == NULL) {
-        fprintf(stderr, "Can't open errFile fil %s!\n", errFileName);
-        exit(1);
+    if (invFile == NULL || errFile == NULL) {
+        return 0;
     }
 
     // currInv -> (a)invFileName
@@ -319,5 +356,116 @@ int saveInventory(char *invFileName, char *errFileName, chemTree *currInv, FILE 
     // close
     fclose(invFile);
     fclose(errFile);
+
+    return 1;
 }
 
+
+
+//P3
+
+void test3() {
+    printf("*** test3 ***\n");
+
+    printf("      -> findInTree:\n");
+    chemTree *invTree = getExampleTree();
+    if(strcmp(findInTree(invTree->root, "chem_code1")->data.chem_code, "chem_code1")) printf("              -> error line 1");
+    if(strcmp(findInTree(invTree->root, "chem_code6")->data.chem_code, "chem_code6")) printf("              -> error line 2");
+    if(strcmp(findInTree(invTree->root, "chem_code8")->data.chem_code, "chem_code8")) printf("              -> error line 3");
+    if(findInTree(invTree->root, "chem_code10") != NULL) printf("              -> error line 4");
+    if(findInTree(invTree->root, "chem_codd6") != NULL) printf("              -> error line 5");
+    printf("         done\n");
+
+
+    printf("      -> makeSale:\n");
+    chemTree *currInv = getExampleTree();
+    char *currErrFileName = "test3-makeSale-currErr";
+    FILE * currErr = fopen(currErrFileName , "w");
+    char * err = "C3H8 name1 2000\n"
+                 "NH3 name2 1000\n";
+    fputs(err, currErr);
+    fclose(currErr);
+    currErr = fopen(currErrFileName , "a");
+
+    char *saleFileName = "test3-makeSale-sale";
+    FILE * saleFile = fopen(saleFileName , "w");
+    char * sale = "C3H8 2000 2000\n"       // not existing codes
+                  "NH3 1000 1000\n"
+                  "chem_code1 1000 1000\n" // too much qun'
+                  "chem_code5 1000 1000\n"
+                  "chem_code2 200 1000\n" // good examples
+                  "chem_code6 100 1000\n";
+    fputs(sale, saleFile);
+    fclose(saleFile);
+
+    makeSale(saleFileName, currInv, currErr);
+    fclose(currErr);
+    if(findInTree(currInv->root, "chem_code2")->data.quantity != 0)  printf("              -> error update tree1");
+    if(findInTree(currInv->root, "chem_code6")->data.quantity != 600-100)  printf("              -> error update tree2");
+
+    printf("         done\n");
+}
+
+chemNode * findInTree(chemNode *head, char * code){
+    if(head == NULL)
+        return NULL;
+    if(strcmp(head->data.chem_code, code) == 0)
+        return head;
+    if(strcmp(head->data.chem_code, code) > 0)
+        return findInTree(head -> left, code);
+    else
+        return findInTree(head -> right, code);
+}
+
+
+void makeSale(char *saleFileName, chemTree *currInv, FILE *currErr){
+    FILE * saleFile = fopen(saleFileName , "r+");
+    char chemCode[21];
+    long quantity, price;
+    chemNode * invHead = currInv->root;
+    chemNode * wantedNode;
+
+    char name[201];
+    printf("Please enter name of sales representative (no spaces): ");
+    scans(name);
+
+    while (fscanf(saleFile , "%s" , chemCode) != EOF) {
+        fscanf(saleFile, " %ld", &quantity);
+        fscanf(saleFile, " %ld", &price);
+
+        wantedNode = findInTree(invHead, chemCode);
+        if(wantedNode == NULL || wantedNode->data.quantity < quantity){
+            // add err
+            fputs(chemCode, currErr);
+            fputs(" ", currErr);
+            fputs(name, currErr);     // TODO: check
+            fprintf(currErr, " %d\n", quantity);
+        } else {
+            wantedNode->data.quantity -= quantity;
+            currInv->balance += price;
+        }
+
+    }
+    fclose(saleFile);
+}
+
+
+//P4
+//TODO check function args from Maoz
+//TODO make re-check
+void makePurchase(buyInfo *buy , chemTree *currInv) {
+    invInfo *newInfo = malloc(sizeof (invInfo));
+    chemNode *invHead = currInv -> root;
+    chemNode *wantedNode;
+    wantedNode = findInTree(invHead , buy -> chem_code);
+    if (wantedNode == NULL) {
+        strcpy(newInfo -> chem_name , buy -> chem_name);
+        strcpy(newInfo -> chem_code , buy -> chem_code);
+        newInfo -> quantity = buy -> quantity;
+        currInv -> root = buildBST(invHead , newInfo);
+    }
+    else
+        wantedNode -> data.quantity += buy -> quantity;
+    currInv -> balance -= buy -> cost;
+    free(newInfo);
+}
